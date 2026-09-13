@@ -32,27 +32,32 @@ def get_rsi(symbol, tf):
 
 def scanner_loop():
     while True:
-        print(f"Scanner Started {datetime.now()}")
+        print(f"Scanner Started {datetime.now()}", flush=True)
         for coin in TOP_100_COINDCX:
             m = get_rsi(coin, '1M')
             w = get_rsi(coin, '1w')
             h = get_rsi(coin, '1h')
             m15 = get_rsi(coin, '15m')
-            print(f"{coin} M:{m} W:{w} H:{h} M15:{m15}")
+            print(f"{coin} M:{m} W:{w} H:{h} M15:{m15}", flush=True)
             if m > 60 and w > 60 and h > 60 and m15 > 60:
                 msg = f"🚀 BUY SIGNAL\n{coin}\nM:{m} W:{w} H:{h} M15:{m15}\nAll > 60"
-                print(msg)
+                print(msg, flush=True)
                 send_telegram(msg)
             time.sleep(0.5)
         time.sleep(3600)
+
+# Render pe auto start ke liye FIX
+def start_scanner():
+    t = threading.Thread(target=scanner_loop)
+    t.daemon = True
+    t.start()
+
+start_scanner()
 
 @app.route('/')
 def home():
     return "RSI Scanner Running M/W/H/15M > 60"
 
 if __name__ == "__main__":
-    t = threading.Thread(target=scanner_loop)
-    t.daemon = True
-    t.start()
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
