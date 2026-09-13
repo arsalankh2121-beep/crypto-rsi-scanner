@@ -12,23 +12,30 @@ app = Flask(__name__)
 
 TOP_100_COINDCX = ['BTC/USDT','ETH/USDT','SOL/USDT','XRP/USDT','DOGE/USDT','ADA/USDT','AVAX/USDT','SHIB/USDT','DOT/USDT','LINK/USDT','TRX/USDT','MATIC/USDT','LTC/USDT','BCH/USDT','APT/USDT','NEAR/USDT','VET/USDT','ICP/USDT','ETC/USDT','FIL/USDT','RNDR/USDT','GRT/USDT','IMX/USDT','SUI/USDT','PEPE/USDT','BONK/USDT','FLOKI/USDT','SEI/USDT','TAO/USDT','FET/USDT','ORDI/USDT','SATS/USDT','AR/USDT','FLOW/USDT','STX/USDT','MANA/USDT','AXS/USDT','CHZ/USDT','ENJ/USDT','SAND/USDT','SNX/USDT','COMP/USDT','1INCH/USDT','BLUR/USDT','DYDX/USDT','KAVA/USDT','KLAY/USDT','ZIL/USDT','WAVES/USDT']
 
-exchange = ccxt.binance()
+exchange = ccxt.okx()
+exchange.enableRateLimit = True
+
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 CHAT_ID = os.environ.get("CHAT_ID")
 
 def send_telegram(msg):
     try:
         url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-        requests.get(url, params={"chat_id": CHAT_ID, "text": msg})
-    except: pass
+        requests.get(url, params={"chat_id": CHAT_ID, "text": msg}, timeout=10)
+    except Exception as e:
+        print(f"Telegram Error: {e}", flush=True)
 
 def get_rsi(symbol, tf):
     try:
         ohlcv = exchange.fetch_ohlcv(symbol, tf, limit=100)
+        if len(ohlcv) < 20:
+            return 0
         df = pd.DataFrame(ohlcv, columns=['timestamp','open','high','low','close','volume'])
         rsi_val = ta.momentum.RSIIndicator(close=df['close']).rsi().iloc[-1]
         return round(float(rsi_val),2)
-    except: return 0
+    except Exception as e:
+        print(f"Error {symbol} {tf}: {e}", flush=True)
+        return 0
 
 def scanner_loop():
     while True:
@@ -44,9 +51,9 @@ def scanner_loop():
                 print(msg, flush=True)
                 send_telegram(msg)
             time.sleep(0.5)
+        print("Cycle Complete, sleeping 1 hour...", flush=True)
         time.sleep(3600)
 
-# Render pe auto start ke liye FIX
 def start_scanner():
     t = threading.Thread(target=scanner_loop)
     t.daemon = True
@@ -56,7 +63,7 @@ start_scanner()
 
 @app.route('/')
 def home():
-    return "RSI Scanner Running M/W/H/15M > 60"
+    return "RSI Scanner Running M/W/H/15M > 60 - OKX"
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
